@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 
@@ -143,45 +144,82 @@ public class ServerThread implements Runnable {
 
         try {
             // Specify the path to the SQLite database file
-            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.db_path;
+            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.questionsDB_path;
 
             // Load the SQLite JDBC driver
             Class.forName("org.sqlite.JDBC");
+            JSONArray jsonArray = new JSONArray();
 
             // Establish the connection to the SQLite database
             try (Connection connection = DriverManager.getConnection(databaseUrl)) {
-                String query = "SELECT id, noi_dung, linh_vuc_id, phuong_an_a, phuong_an_b, phuong_an_c, phuong_an_d, dap_an FROM cau_hoi";
+                String query = "select  * from Tbl_question WHERE diff_id = 1 ORDER BY RANDOM()  LIMIT 3";
 
                 try (PreparedStatement statement = connection.prepareStatement(query)) {
                     try (ResultSet resultSet = statement.executeQuery()) {
-                        JSONArray jsonArray = new JSONArray();
 
                         while (resultSet.next()) {
                             JSONObject jsonObject = new JSONObject();
 
-                            jsonObject.put("id", resultSet.getInt("id"));
-                            jsonObject.put("noi_dung", resultSet.getString("noi_dung"));
-                            jsonObject.put("linh_vuc_id", resultSet.getInt("linh_vuc_id"));
-                            jsonObject.put("phuong_an_a", resultSet.getString("phuong_an_a"));
-                            jsonObject.put("phuong_an_b", resultSet.getString("phuong_an_b"));
-                            jsonObject.put("phuong_an_c", resultSet.getString("phuong_an_c"));
-                            jsonObject.put("phuong_an_d", resultSet.getString("phuong_an_d"));
-                            jsonObject.put("dap_an", resultSet.getString("dap_an"));
+                            jsonObject.put("id", resultSet.getInt("_id"));
+                            jsonObject.put("noi_dung", Decrypt(resultSet.getString("Question")));
+                            jsonObject.put("phuong_an_a", resultSet.getString("ANSW1"));
+                            jsonObject.put("phuong_an_b", resultSet.getString("ANSW2"));
+                            jsonObject.put("phuong_an_c", resultSet.getString("ANSW3"));
+                            jsonObject.put("phuong_an_d", resultSet.getString("ANSW4"));
+                            jsonObject.put("dap_an", convert2ABCD(resultSet.getString("ANSWT")));
+                            jsonObject.put("path", resultSet.getString("Qpath"));
 
                             jsonArray.put(jsonObject);
                         }
 
-                        // Shuffle the JSON array
-                        List<Object> jsonList = jsonArray.toList();
+                    }
+                }
 
-                        Collections.shuffle(jsonList);
+                query = "select  * from Tbl_question WHERE diff_id = 2 ORDER BY RANDOM()  LIMIT 5";
 
-                        // Send only the first 15 elements to the client
-                        JSONArray trimmedArray = new JSONArray(jsonList.subList(0, 15));
+                try (PreparedStatement statement = connection.prepareStatement(query)) {
+                    try (ResultSet resultSet = statement.executeQuery()) {
+
+                        while (resultSet.next()) {
+                            JSONObject jsonObject = new JSONObject();
+
+                            jsonObject.put("id", resultSet.getInt("_id"));
+                            jsonObject.put("noi_dung", Decrypt(resultSet.getString("Question")));
+                            jsonObject.put("phuong_an_a", resultSet.getString("ANSW1"));
+                            jsonObject.put("phuong_an_b", resultSet.getString("ANSW2"));
+                            jsonObject.put("phuong_an_c", resultSet.getString("ANSW3"));
+                            jsonObject.put("phuong_an_d", resultSet.getString("ANSW4"));
+                            jsonObject.put("dap_an", convert2ABCD(resultSet.getString("ANSWT")));
+                            jsonObject.put("path", resultSet.getString("Qpath"));
+
+                            jsonArray.put(jsonObject);
+                        }
+
+                    }
+                }
+
+                query = "select  * from Tbl_question WHERE diff_id = 3 ORDER BY RANDOM()  LIMIT 7";
+
+                try (PreparedStatement statement = connection.prepareStatement(query)) {
+                    try (ResultSet resultSet = statement.executeQuery()) {
+
+                        while (resultSet.next()) {
+                            JSONObject jsonObject = new JSONObject();
+
+                            jsonObject.put("id", resultSet.getInt("_id"));
+                            jsonObject.put("noi_dung", Decrypt(resultSet.getString("Question")));
+                            jsonObject.put("phuong_an_a", resultSet.getString("ANSW1"));
+                            jsonObject.put("phuong_an_b", resultSet.getString("ANSW2"));
+                            jsonObject.put("phuong_an_c", resultSet.getString("ANSW3"));
+                            jsonObject.put("phuong_an_d", resultSet.getString("ANSW4"));
+                            jsonObject.put("dap_an", convert2ABCD(resultSet.getString("ANSWT")));
+                            jsonObject.put("path", resultSet.getString("Qpath"));
+
+                            jsonArray.put(jsonObject);
+                        }
 
                         // Convert the trimmed array to a JSON string
-                        String jsonStr = trimmedArray.toString();
-
+                        String jsonStr = jsonArray.toString();
                         // Send the JSON string to the client
                         write(jsonStr);
                     }
@@ -193,10 +231,21 @@ public class ServerThread implements Runnable {
         }
     }
 
+    private String convert2ABCD(String answt) {
+        String[] abcd = {"A", "B", "C", "D"};
+        return abcd[Integer.parseInt(answt)-1];
+    }
+
+    private String Decrypt(String question) {
+        String lastfirst = question.substring(question.length() - 10, question.length()) + question.substring(0, question.length() - 10);
+        byte[] decodedBytes = Base64.getDecoder().decode(lastfirst);
+        return new String(decodedBytes);
+    }
+
     private void handleRegisterRequest() throws IOException {
         // TODO: Implement the registration logic here
         // This is just a placeholder
-        String response = "OK: Register request received";
+        String response = "Register request";
         write(response);
     }
 }
