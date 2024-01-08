@@ -233,7 +233,7 @@ public class ServerThread implements Runnable {
 
     private String convert2ABCD(String answt) {
         String[] abcd = {"A", "B", "C", "D"};
-        return abcd[Integer.parseInt(answt)-1];
+        return abcd[Integer.parseInt(answt) - 1];
     }
 
     private String Decrypt(String question) {
@@ -243,9 +243,47 @@ public class ServerThread implements Runnable {
     }
 
     private void handleRegisterRequest() throws IOException {
-        // TODO: Implement the registration logic here
-        // This is just a placeholder
         String response = "Register request";
-        write(response);
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        String username = is.readLine();
+        String password = is.readLine();
+
+        try {
+            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.db_path;
+            // Load the SQLite JDBC driver
+            Class.forName("org.sqlite.JDBC");
+            // Establish the connection to the SQLite database
+            try (Connection connection = DriverManager.getConnection(databaseUrl)) {
+                // check user exist
+                String query = "SELECT id FROM nguoi_choi WHERE ten_dang_nhap = ?";
+                try (PreparedStatement statement = connection.prepareStatement(query)) {
+                    statement.setString(1, username);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (resultSet.next()) {
+                            // user exist
+                            write("0");
+                        } else {
+                            write("1");
+                            String question = is.readLine();
+                            String answer = is.readLine();
+                            query = "INSERT INTO nguoi_choi (ten_dang_nhap, mat_khau, cau_hoi, cau_tra_loi, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+                            PreparedStatement statement_2 = connection.prepareStatement(query);
+                            statement_2.setString(1, username);
+                            statement_2.setString(2, password);
+                            statement_2.setString(3, question);
+                            statement_2.setString(4, answer);
+                            statement_2.executeUpdate();
+                        }
+                    }
+                }
+
+            }
+
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
