@@ -2,11 +2,7 @@ package server;
 
 import java.io.*;
 import java.net.Socket;
-import java.sql.SQLException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +34,11 @@ public class ServerThread implements Runnable {
         this.clientNumber = clientNumber;
         System.out.println("Server thread number " + clientNumber + " Started");
         isClosed = false;
+    }
+    public void write(String message) throws IOException {
+        os.write(message);
+        os.newLine();
+        os.flush();
     }
 
     @Override
@@ -74,6 +75,12 @@ public class ServerThread implements Runnable {
                     case "GET /register":
                         handleRegisterRequest();
                         break;
+                    case "GET /log":
+                        handleLogRequest();
+                        break;
+                    case "GET /findingCompetitor":
+                        handleFindingCompetitorRequest();
+                        break;
                     default:
                         // If the message type is not recognized, the server continues listening
                         break;
@@ -88,11 +95,55 @@ public class ServerThread implements Runnable {
         }
     }
 
-    public void write(String message) throws IOException {
-        os.write(message);
-        os.newLine();
-        os.flush();
+    private void handleFindingCompetitorRequest() throws IOException {
+        String response = "Find competitor request";
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        // finding competitor online in stack
+        String tmp_userID = is.readLine();
+
+
     }
+
+    private void handleLogRequest() {
+        try {
+//
+            String userID = is.readLine();
+            String lastQuest = is.readLine();
+            String begin = is.readLine();
+            String end = is.readLine();
+            String timeUsage = is.readLine();
+            String listQuestionsStr = is.readLine();
+            System.out.println(userID);
+            System.out.println(begin);
+            System.out.println(end);
+            System.out.println(listQuestionsStr);
+
+            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.db_path;
+            // Load the SQLite JDBC driver
+            Class.forName("org.sqlite.JDBC");
+            // Establish the connection to the SQLite database
+            Connection connection = DriverManager.getConnection(databaseUrl);
+            String query = "INSERT INTO play_log (user_id, score, time_usage, last_question, questions_play_history, begin, end, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+            PreparedStatement statement_2 = connection.prepareStatement(query);
+            statement_2.setString(1, userID);
+            statement_2.setString(2, lastQuest);
+            statement_2.setString(3, timeUsage);
+            statement_2.setString(4, lastQuest);
+            statement_2.setString(5, listQuestionsStr);
+            statement_2.setString(6, begin);
+            statement_2.setString(7, end);
+            statement_2.executeUpdate();
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
 
     private void handleLoginRequest() throws IOException {
         // TODO: Implement the login logic here

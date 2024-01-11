@@ -17,21 +17,42 @@ import java.util.logging.Logger;
  */
 public class ServerThreadBus {
     private List<ServerThread> listServerThreads;
+    private List<ServerThread> listCompetitorThreads;
+
 
     public List<ServerThread> getListServerThreads() {
         return listServerThreads;
     }
+    public List<ServerThread> getListCompetitorThreads() {
+        return listCompetitorThreads;
+    }
+
 
     public ServerThreadBus() {//Truyền danh sách Thread tại Server một ArrayList
         listServerThreads = new ArrayList<>();
+        listCompetitorThreads = new ArrayList<>();
     }
 
     public void add(ServerThread serverThread){//Thêm Thread vào danh sách Thread tại Server
         listServerThreads.add(serverThread);
     }
+
+    public void add2WaitingList(ServerThread serverThread){//Thêm Thread vào danh sách Thread tại Server
+        listCompetitorThreads.add(serverThread);
+    }
     
     public void mutilCastSend(String message){ //like sockets.emit in socket.io
         for(ServerThread serverThread : Server.serverThreadBus.getListServerThreads()){
+            try {
+                serverThread.write(message);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    public void send2AllCompetitor(String message){ //like sockets.emit in socket.io
+        for(ServerThread serverThread : Server.serverThreadBus.getListCompetitorThreads()){
             try {
                 serverThread.write(message);
             } catch (IOException ex) {
