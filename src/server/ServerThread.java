@@ -100,8 +100,9 @@ public class ServerThread implements Runnable {
         System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
         // finding competitor online in stack
         String tmp_userID = is.readLine();
-
-
+        System.out.printf("[Client %d] - UserID %s\n", this.clientNumber, tmp_userID);
+        Server.serverThreadBus.add2WaitingList(tmp_userID);
+        Server.serverThreadBus.send2AllCompetitor("Found");
     }
 
     private void handleLogRequest() {
@@ -172,8 +173,9 @@ public class ServerThread implements Runnable {
                     try (ResultSet resultSet = statement.executeQuery()) {
                         if (resultSet.next()) {
                             // The login is successful
+                            int userId = resultSet.getInt("id");
                             write("LOGIN_SUCCESS");
-                            write("1");
+                            write(String.valueOf(userId));
                         } else {
                             // Invalid username or password
                             write("LOGIN_FAILURE");

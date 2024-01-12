@@ -17,28 +17,65 @@ import java.util.logging.Logger;
  */
 public class ServerThreadBus {
     private List<ServerThread> listServerThreads;
+    private List<String> listUserID;
+    private List<String> listCompetitorUserID;
     private List<ServerThread> listCompetitorThreads;
 
 
     public List<ServerThread> getListServerThreads() {
         return listServerThreads;
     }
+
     public List<ServerThread> getListCompetitorThreads() {
         return listCompetitorThreads;
+    }
+
+    public List<String> getListCompetitorUserID() {
+        return listCompetitorUserID;
     }
 
 
     public ServerThreadBus() {//Truyền danh sách Thread tại Server một ArrayList
         listServerThreads = new ArrayList<>();
-        listCompetitorThreads = new ArrayList<>();
+        listCompetitorUserID = new ArrayList<>();
+        listUserID = new ArrayList<>();
     }
 
     public void add(ServerThread serverThread){//Thêm Thread vào danh sách Thread tại Server
         listServerThreads.add(serverThread);
     }
 
-    public void add2WaitingList(ServerThread serverThread){//Thêm Thread vào danh sách Thread tại Server
-        listCompetitorThreads.add(serverThread);
+    public void addUserID(String userID){//Thêm Thread vào danh sách Thread tại Server
+        listUserID.add(userID);
+    }
+
+    public void add2WaitingList(String userID) {
+        listCompetitorUserID.add(userID);
+
+        if (listCompetitorUserID.size() >= 2) {
+            // Create a new thread to handle the competitors
+            Thread competitorThread = new Thread(() -> {
+                String competitor1 = listCompetitorUserID.remove(0);
+                String competitor2 = listCompetitorUserID.remove(0);
+
+                // Perform any desired operations with the competitors
+                // For example, you can print or process the competitors
+
+                System.out.println("Competitor 1: " + competitor1);
+                System.out.println("Competitor 2: " + competitor2);
+                for (int i=0; i < listUserID.size(); i++) {
+                    if (listUserID.get(i).equals(competitor1)) {
+                        listCompetitorThreads.add(listServerThreads.get(i));
+                    } else if (listUserID.get(i).equals(competitor2)) {
+                        listCompetitorThreads.add(listServerThreads.get(i));
+                    }
+                }
+
+            });
+
+            // Start the competitor thread
+            competitorThread.start();
+        }
     }
     
     public void mutilCastSend(String message){ //like sockets.emit in socket.io
@@ -59,6 +96,7 @@ public class ServerThreadBus {
                 ex.printStackTrace();
             }
         }
+
     }
     
     public void boardCast(int id, String message){
