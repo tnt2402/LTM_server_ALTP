@@ -11,6 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class ServerThread implements Runnable {
+    private int userId;
     private Socket socketOfServer;
     private int clientNumber;
     private BufferedReader is;
@@ -75,11 +76,20 @@ public class ServerThread implements Runnable {
                     case "GET /register":
                         handleRegisterRequest();
                         break;
-                    case "GET /log":
+                    case "POST /log":
                         handleLogRequest();
+                        break;
+                    case "POST /log_competitor":
+                        handleLogCompetitorRequest();
+                        break;
+                    case "GET /log":
+                        handleLogGETRequest();
                         break;
                     case "GET /findingCompetitor":
                         handleFindingCompetitorRequest();
+                        break;
+                    case "CLOSE /findingCompetitor":
+                        handleCloseFindCompetitorRequest();
                         break;
                     default:
                         // If the message type is not recognized, the server continues listening
@@ -90,10 +100,127 @@ public class ServerThread implements Runnable {
             isClosed = true;
             Server.serverThreadBus.remove(clientNumber);
             System.out.println("[Client " + this.clientNumber + "] - Exited");
+            Server.serverThreadBus.removeUserID(String.valueOf(userId));
+
 //            Server.serverThreadBus.sendOnlineList();
 //            Server.serverThreadBus.mutilCastSend("global-message" + "," + "---Client " + this.clientNumber + " has exited---");
         }
     }
+
+    private void handleLogCompetitorRequest() {
+        String response = "Add log competitive mode";
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        try {
+//
+            String userID = is.readLine();
+            String lastQuest = is.readLine();
+            String begin = is.readLine();
+            String end = is.readLine();
+            String timeUsage = is.readLine();
+            String listQuestionsStr = is.readLine();
+            String md5sum = is.readLine();
+            System.out.println(userID);
+            System.out.println(begin);
+            System.out.println(end);
+            System.out.println(listQuestionsStr);
+            System.out.println(md5sum);
+
+
+            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.db_path;
+            // Load the SQLite JDBC driver
+            Class.forName("org.sqlite.JDBC");
+            // Establish the connection to the SQLite database
+            Connection connection = DriverManager.getConnection(databaseUrl);
+            String query = "INSERT INTO play_log (user_id, score, time_usage, last_question, questions_play_history, begin, end, competitiveMode, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+            PreparedStatement statement_2 = connection.prepareStatement(query);
+            statement_2.setString(1, userID);
+            statement_2.setString(2, lastQuest);
+            statement_2.setString(3, timeUsage);
+            statement_2.setString(4, lastQuest);
+            statement_2.setString(5, listQuestionsStr);
+            statement_2.setString(6, begin);
+            statement_2.setString(7, end);
+            statement_2.setString(8, md5sum);
+            statement_2.executeUpdate();
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void handleLogGETRequest() {
+        String response = "Get log request";
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        try {
+            String userID = is.readLine();
+            System.out.println(userID);
+            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.db_path;
+            // Load the SQLite JDBC driver
+            Class.forName("org.sqlite.JDBC");
+            // Establish the connection to the SQLite database
+            Connection connection = DriverManager.getConnection(databaseUrl);
+            String query = String.format("SELECT score, time_usage, last_question, begin, end, competitiveMode FROM play_log WHERE user_id=%s", userID);
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+
+            // Create a JSONArray to store the result set as JSON objects
+            JSONArray jsonArray = new JSONArray();
+            // Iterate through the results and convert each row to a JSON object
+            while (resultSet.next()) {
+                int score = resultSet.getInt("score");
+                String timeUsage = resultSet.getString("time_usage");
+                String lastQuestion = resultSet.getString("last_question");
+                String begin = resultSet.getString("begin");
+                String end = resultSet.getString("end");
+                String competitiveMode = resultSet.getString("competitiveMode");
+                if (competitiveMode == null) {
+                    competitiveMode = "";
+                }
+
+                // Create a JSON object for each row
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("Score", score);
+                jsonObject.put("Time_Usage", timeUsage);
+                jsonObject.put("Last_Question", lastQuestion);
+                jsonObject.put("Begin", begin);
+                jsonObject.put("End", end);
+                jsonObject.put("competitiveMode", competitiveMode);
+
+                // Add the JSON object to the JSONArray
+                jsonArray.put(jsonObject);
+            }
+
+            // Convert the JSONArray to a JSON string
+            String jsonResult = jsonArray.toString();
+
+            // Send the JSON query result to the client
+            write(jsonResult);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void handleCloseFindCompetitorRequest() throws IOException {
+        String response = "Close find competitor request";
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        // finding competitor online in stack
+        String tmp_userID = is.readLine();
+        System.out.printf("[Client %d] - UserID %s\n", this.clientNumber, tmp_userID);
+        Server.serverThreadBus.removeFromWaitingList(tmp_userID);
+//        String data = getData();
+//        Server.serverThreadBus.send2AllCompetitor(data);
+
+    }
+
 
     private void handleFindingCompetitorRequest() throws IOException {
         String response = "Find competitor request";
@@ -102,8 +229,11 @@ public class ServerThread implements Runnable {
         String tmp_userID = is.readLine();
         System.out.printf("[Client %d] - UserID %s\n", this.clientNumber, tmp_userID);
         Server.serverThreadBus.add2WaitingList(tmp_userID);
-        Server.serverThreadBus.send2AllCompetitor("Found");
+        String data = getData();
+        Server.serverThreadBus.send2AllCompetitor(data);
+
     }
+
 
     private void handleLogRequest() {
         try {
@@ -173,9 +303,16 @@ public class ServerThread implements Runnable {
                     try (ResultSet resultSet = statement.executeQuery()) {
                         if (resultSet.next()) {
                             // The login is successful
-                            int userId = resultSet.getInt("id");
-                            write("LOGIN_SUCCESS");
-                            write(String.valueOf(userId));
+                            userId = resultSet.getInt("id");
+                            if (!Server.serverThreadBus.checkUserID(String.valueOf(userId))) {
+                                Server.serverThreadBus.addUserID(String.valueOf(userId));
+                                write("LOGIN_SUCCESS");
+                                write(String.valueOf(userId));
+                            } else {
+                                write("LOGIN_FAILURE");
+                                write("0");
+                            }
+
                         } else {
                             // Invalid username or password
                             write("LOGIN_FAILURE");
@@ -190,10 +327,7 @@ public class ServerThread implements Runnable {
         }
     }
 
-
-    private void handleDataRequest() throws IOException {
-        String response = "Data request";
-        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+    private String getData() {
 
         try {
             // Specify the path to the SQLite database file
@@ -274,7 +408,8 @@ public class ServerThread implements Runnable {
                         // Convert the trimmed array to a JSON string
                         String jsonStr = jsonArray.toString();
                         // Send the JSON string to the client
-                        write(jsonStr);
+//                        write(jsonStr);
+                        return jsonStr;
                     }
                 }
             }
@@ -282,6 +417,14 @@ public class ServerThread implements Runnable {
             // Handle any errors that occur during the database connection or query execution
             e.printStackTrace();
         }
+        return "";
+    }
+
+    private void handleDataRequest() throws IOException {
+        String response = "Data request";
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        String json = getData();
+        write(json);
     }
 
     private String convert2ABCD(String answt) {

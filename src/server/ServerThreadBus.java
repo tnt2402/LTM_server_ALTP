@@ -39,6 +39,7 @@ public class ServerThreadBus {
         listServerThreads = new ArrayList<>();
         listCompetitorUserID = new ArrayList<>();
         listUserID = new ArrayList<>();
+        listCompetitorThreads = new ArrayList<>();
     }
 
     public void add(ServerThread serverThread){//Thêm Thread vào danh sách Thread tại Server
@@ -47,19 +48,19 @@ public class ServerThreadBus {
 
     public void addUserID(String userID){//Thêm Thread vào danh sách Thread tại Server
         listUserID.add(userID);
+
+    }
+
+    public boolean checkUserID(String userID){
+        return listUserID.contains(userID);
     }
 
     public void add2WaitingList(String userID) {
         listCompetitorUserID.add(userID);
-
         if (listCompetitorUserID.size() >= 2) {
             // Create a new thread to handle the competitors
-            Thread competitorThread = new Thread(() -> {
                 String competitor1 = listCompetitorUserID.remove(0);
                 String competitor2 = listCompetitorUserID.remove(0);
-
-                // Perform any desired operations with the competitors
-                // For example, you can print or process the competitors
 
                 System.out.println("Competitor 1: " + competitor1);
                 System.out.println("Competitor 2: " + competitor2);
@@ -70,12 +71,15 @@ public class ServerThreadBus {
                         listCompetitorThreads.add(listServerThreads.get(i));
                     }
                 }
+                send2AllCompetitor("Found");
 
-            });
 
-            // Start the competitor thread
-            competitorThread.start();
-        }
+            }
+        System.out.println("ListUserId: " + listUserID);
+        System.out.println("ListServerThreads: " + listServerThreads);
+        System.out.println("ListCompetitorThreads: " + listCompetitorThreads);
+        System.out.println("ListCompetitorUserID: " + listCompetitorUserID);
+
     }
     
     public void mutilCastSend(String message){ //like sockets.emit in socket.io
@@ -150,5 +154,28 @@ public class ServerThreadBus {
                 Server.serverThreadBus.listServerThreads.remove(i);
             }
         }
+    }
+
+    public void removeUserID(String s) {
+        for (int i=0; i < listUserID.size(); i++) {
+            if (listUserID.get(i).equals(s)) {
+//                listServerThreads.remove(i);
+                listUserID.remove(i);
+            }
+        }
+    }
+
+    public void removeFromWaitingList(String tmpUserID) {
+//        listCompetitorUserID.add(userID);
+        for (int i=0; i < listCompetitorUserID.size(); i++) {
+            if (listCompetitorUserID.get(i).equals(tmpUserID)) {
+                listCompetitorUserID.remove(i);
+            }
+        }
+        System.out.println("ListUserId: " + listUserID);
+        System.out.println("ListServerThreads: " + listServerThreads);
+        System.out.println("ListCompetitorThreads: " + listCompetitorThreads);
+        System.out.println("ListCompetitorUserID: " + listCompetitorUserID);
+
     }
 }
