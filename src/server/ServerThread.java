@@ -3,6 +3,7 @@ package server;
 import java.io.*;
 import java.net.Socket;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -91,6 +92,9 @@ public class ServerThread implements Runnable {
                     case "CLOSE /findingCompetitor":
                         handleCloseFindCompetitorRequest();
                         break;
+                    case "CHECK /loseorwin":
+                        handleCheckLoseOrWin();
+                        break;
                     default:
                         // If the message type is not recognized, the server continues listening
                         break;
@@ -104,6 +108,69 @@ public class ServerThread implements Runnable {
 
 //            Server.serverThreadBus.sendOnlineList();
 //            Server.serverThreadBus.mutilCastSend("global-message" + "," + "---Client " + this.clientNumber + " has exited---");
+        }
+    }
+
+    private void handleCheckLoseOrWin() {
+        String response = "Check lose or win request";
+        System.out.printf("[Client %d] - %s\n", this.clientNumber, response);
+        try {
+            String gameMd5 = is.readLine();
+            String databaseUrl = "jdbc:sqlite:" + File.separator + File.separator + config.db_path;
+            // Load the SQLite JDBC driver
+            Class.forName("org.sqlite.JDBC");
+            // Establish the connection to the SQLite database
+            Connection connection = DriverManager.getConnection(databaseUrl);
+            String query = String.format("SELECT user_id, score, time_usage FROM play_log WHERE competitiveMode=%s", gameMd5);
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
+
+            // Iterate through the results and convert each row to a JSON object
+            List<Integer> scoreList = new ArrayList<>();
+            List<String> timeList = new ArrayList<>();
+            List<String> userList = new ArrayList<>();
+
+            while (resultSet.next()) {
+                int score = resultSet.getInt("score");
+                String timeUsage = resultSet.getString("time_usage");
+                String userId = resultSet.getString("user_id");
+
+                scoreList.add(score);
+                timeList.add(timeUsage);
+                userList.add(userId);
+
+            }
+
+            int highestScore = Integer.MIN_VALUE;
+            String winner = "";
+
+            for (int i = 0; i < scoreList.size(); i++) {
+                int currentScore = scoreList.get(i);
+                String currentTime = timeList.get(i);
+                String currentUserId = userList.get(i);
+
+                if (currentScore > highestScore) {
+                    highestScore = currentScore;
+                    winner = currentUserId;
+                } else if (currentScore == highestScore) {
+                    String winnerTime = timeList.get(userList.indexOf(winner));
+
+                    if (currentTime.compareTo(winnerTime) < 0) {
+                        winner = currentUserId;
+                    }
+                }
+            }
+            System.out.println("Winner: " + winner);
+            write(winner);
+
+            // Send the JSON query result to the client
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 

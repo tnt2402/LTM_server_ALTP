@@ -86,8 +86,8 @@ public class ServerThreadBus {
         for(ServerThread serverThread : Server.serverThreadBus.getListServerThreads()){
             try {
                 serverThread.write(message);
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -96,8 +96,8 @@ public class ServerThreadBus {
         for(ServerThread serverThread : Server.serverThreadBus.getListCompetitorThreads()){
             try {
                 serverThread.write(message);
-            } catch (IOException ex) {
-                ex.printStackTrace();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
 
@@ -111,8 +111,8 @@ public class ServerThreadBus {
             } else {
                 try {
                     serverThread.write(message);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
@@ -141,10 +141,10 @@ public class ServerThreadBus {
             if(serverThread.getClientNumber()==id){
                 try {
                     serverThread.write("global-message"+","+message);
-                    break;
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
+                break;
             }
         }
     }
